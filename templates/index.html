@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cinema AI Management</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">🎬 <span>Cinema<span class="accent">AI</span></span></div>
+
+        <div class="userbox">
+            <div class="avatar">{{ user.username[0]|upper }}</div>
+            <div>
+                <b>{{ user.username }}</b>
+                <small>{{ user.role }}</small>
+            </div>
+        </div>
+
+        <nav>
+            <a class="nav active" href="#dashboard" onclick="showPage('dashboard')">
+                ▦ <span>Dashboard</span>
+            </a>
+
+            <a class="nav" href="#movies" onclick="showPage('movies')">
+                🎟 <span>Quản lý phim</span>
+            </a>
+
+            <a class="nav" href="#showtimes" onclick="showPage('showtimes')">
+                🕐 <span>Suất chiếu</span>
+            </a>
+            <a class="nav" href="#rooms" onclick="showPage('rooms')">
+                🏢 <span>Phòng & Ghế</span>
+            </a>
+
+            <a class="nav" href="#tickets" onclick="showPage('tickets')">
+                🎟 <span>Bán vé</span>
+            </a>
+
+            <a class="nav" href="#ai" onclick="showPage('ai')">
+                ✦ <span>Trợ lý AI</span>
+            </a>
+
+            <a class="nav" href="#reports" onclick="showPage('reports')">
+                ▣ <span>Báo cáo</span>
+            </a>
+        </nav>
+
+        <a class="logout" href="/logout">↪ Đăng xuất</a>
+    </aside>
+
+ <main class="main">
+
+        <header class="topbar">
+            <div>
+                <h1 id="page-title">Tổng quan</h1>
+                <p>Quản lý rạp chiếu phim thông minh</p>
+            </div>
+
+            <div class="top-actions">
+                <span class="status-dot">● Hệ thống hoạt động</span>
+                <span class="role-pill">{{ user.role }}</span>
+            </div>
+        </header>
+
+<section id="dashboard" class="page">
+    <div class="stats">
+        <div class="stat">
+            <span>Doanh thu</span>
+            <strong>{{ "{:,.0f}".format(dashboard.revenue) }} ₫</strong>
+            <i>↗</i>
+        </div>
+
+        <div class="stat">
+            <span>Vé đã bán</span>
+            <strong>{{ dashboard.ticket_count }}</strong>
+            <i>↗</i>
+        </div>
+
+        <div class="stat">
+            <span>Phim</span>
+            <strong>{{ dashboard.movie_count }}</strong>
+            <i>●</i>
+        </div>
+
+        <div class="stat">
+            <span>Suất chiếu</span>
+            <strong>{{ dashboard.show_count }}</strong>
+            <i>●</i>
+        </div>
+    </div>
+
+    <div class="grid2">
+        <div class="panel">
+            <div class="panel-head">
+                <h3>Doanh thu theo phim</h3>
+                <span class="badge">Live</span>
+            </div>
+            <canvas id="revenueChart"></canvas>
+        </div>
+
+        <div class="panel ai-highlight">
+            <div class="ai-icon">✦</div>
+            <h2>AI Cinema Assistant</h2>
+            <p>Gợi ý phim, tư vấn suất chiếu và tóm tắt báo cáo.</p>
+            <button class="btn primary" onclick="showPage('ai')">
+                Mở trợ lý AI →
+            </button>
+        </div>
+    </div>
+</section>
+
+
+<section id="movies" class="page hidden">
+
+    <div class="section-head">
+        <div>
+            <h2>Quản lý phim</h2>
+            <p>Thêm, xóa và tìm kiếm danh mục phim</p>
+        </div>
+
+        {% if user.role in ['Admin','Quản lý'] %}
+        <button
+            class="btn primary"
+            onclick="openModal('movieModal')"
+        >
+            + Thêm phim
+        </button>
+        {% endif %}
+    </div>
+
+    <form class="search" method="get" action="/">
+        <input
+            name="q"
+            value="{{ q }}"
+            placeholder="🔎 Tìm theo tên phim hoặc thể loại..."
+        >
+
+        <button class="btn">
+            Tìm
+        </button>
+    </form>
+
+    <div class="cards">
+
+        {% for m in movies %}
+
+        <div class="movie-card">
+
+            <div class="poster">
+                {{ ['🎬','🍿','🦇','🌊'][loop.index0 % 4] }}
+            </div>
+
+            <div class="movie-info">
+
+                <div class="tag">
+                    {{ m.genre }}
+                </div>
+
+                <h3>
+                    {{ m.title }}
+                </h3>
+
+                <p>
+                    {{ m.description }}
+                </p>
+
+                <div class="movie-meta">
+                    {{ m.duration }} phút · {{ m.age }} · {{ m.status }}
+                </div>
+
+                {% if user.role in ['Admin','Quản lý'] %}
+
+                <form
+                    method="post"
+                    action="/movies/{{ m.id }}/delete"
+                    onsubmit="return confirm('Xóa phim này?')"
+                >
+                    <button class="link danger">
+                        Xóa phim
+                    </button>
+                </form>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+
+<section id="showtimes" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Suất chiếu</h2>
+            <p>Lịch chiếu theo phim, phòng và thời gian</p>
+        </div>
+
+    </div>
+
+    <div class="panel">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Phim</th>
+                    <th>Phòng</th>
+                    <th>Ngày</th>
+                    <th>Giờ</th>
+                    <th>Giá vé</th>
+                </tr>
+            </thead>
+
+            <tbody id="showtimeRows">
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section id="rooms" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Phòng & Ghế</h2>
+            <p>Quản lý phòng chiếu và sơ đồ ghế</p>
+        </div>
+
+    </div>
+
+    <div class="room-grid">
+
+        <div class="panel">
+
+            <h3>Danh sách phòng</h3>
+
+            <div id="roomList">
+
+                <div class="room-item">
+
+                    <div>
+                        <b>Phòng 01</b>
+                        <small>60 ghế</small>
+                    </div>
+
+                    <button
+                        class="btn"
+                        onclick="showRoomSeats(60,'Phòng 01')"
+                    >
+                        Xem ghế
+                    </button>
+
+                </div>
+
+
+                <div class="room-item">
+
+                    <div>
+                        <b>Phòng 02</b>
+                        <small>80 ghế</small>
+                    </div>
+
+                    <button
+                        class="btn"
+                        onclick="showRoomSeats(80,'Phòng 02')"
+                    >
+                        Xem ghế
+                    </button>
+
+                </div>
+
+
+                <div class="room-item">
+
+                    <div>
+                        <b>Phòng VIP</b>
+                        <small>40 ghế</small>
+                    </div>
+
+                    <button
+                        class="btn"
+                        onclick="showRoomSeats(40,'Phòng VIP')"
+                    >
+                        Xem ghế
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="panel">
+
+            <div class="panel-head">
+
+                <div>
+                    <h3 id="roomTitle">
+                        Phòng 01
+                    </h3>
+
+                    <p>
+                        Sơ đồ ghế
+                    </p>
+                </div>
+
+                <span class="badge">
+                    Sơ đồ ghế
+                </span>
+
+            </div>
+
+
+            <div class="screen">
+                MÀN HÌNH
+            </div>
+
+
+            <div
+                class="seats"
+                id="roomSeats"
+            ></div>
+
+
+            <div class="legend">
+
+                <span>
+                    □ Ghế trống
+                </span>
+
+                <span class="selected">
+                    ■ Ghế đang chọn
+                </span>
+
+                <span class="sold">
+                    ■ Ghế đã bán
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="tickets" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Bán vé & chọn ghế</h2>
+            <p>
+                Kiểm tra ghế trùng trước khi thanh toán
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="ticket-layout">
+
+
+        <div class="panel">
+
+            <h3>
+                Chọn suất chiếu
+            </h3>
+
+
+            <select id="ticketShow">
+            </select>
+
+
+            <input
+                id="customerName"
+                placeholder="Tên khách hàng"
+            >
+
+
+            <div class="screen">
+                MÀN HÌNH
+            </div>
+
+
+            <div
+                class="seats"
+                id="seats"
+            ></div>
+
+
+            <div class="legend">
+
+                <span>
+                    □ Trống
+                </span>
+
+                <span class="selected">
+                    ■ Đang chọn
+                </span>
+
+                <span class="sold">
+                    ■ Đã bán
+                </span>
+
+            </div>
+
+
+            <button
+                class="btn primary full"
+                onclick="sellTicket()"
+            >
+                Thanh toán & xuất vé
+            </button>
+
+
+            <div id="ticketMsg">
+            </div>
+
+        </div>
+
+
+
+        <div class="panel summary">
+
+            <h3>
+                Hóa đơn tạm tính
+            </h3>
+
+
+            <p>
+                Ghế:
+
+                <b id="seatSummary">
+                    Chưa chọn
+                </b>
+            </p>
+
+
+            <p>
+                Tạm tính:
+
+                <strong id="total">
+                    0 ₫
+                </strong>
+            </p>
+
+
+            <div class="qr">
+                ▦
+
+                <small>
+                    QR VÉ ĐIỆN TỬ
+                </small>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="ai" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>
+                Trợ lý AI Cinema
+            </h2>
+
+            <p>
+                Hỗ trợ tư vấn phim và suất chiếu
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="ai-grid">
+
+
+        <div class="panel chat">
+
+            <div
+                id="chatbox"
+                class="chatbox"
+            >
+
+                <div class="msg ai">
+                    Xin chào! Tôi là trợ lý AI của rạp.
+                    Bạn muốn xem phim thể loại nào?
+                </div>
+
+            </div>
+
+
+            <div class="chat-input">
+
+                <input
+                    id="aiInput"
+                    placeholder="Ví dụ: Gợi ý phim khoa học viễn tưởng..."
+                >
+
+
+                <button
+                    class="btn primary"
+                    onclick="askAI()"
+                >
+                    Gửi
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="panel">
+
+            <h3>
+                AI gợi ý nhanh
+            </h3>
+
+
+            <button
+                class="ai-action"
+                onclick="recommend()"
+            >
+                ✦ Gợi ý phim đang chiếu
+            </button>
+
+
+            <h3>
+                AI báo cáo
+            </h3>
+
+
+            <button
+                class="ai-action"
+                onclick="reportAI()"
+            >
+                ◫ Tóm tắt doanh thu
+            </button>
+
+
+            <div class="ai-note">
+
+                AI chỉ sử dụng dữ liệu phim/doanh thu được cung cấp
+                cho hệ thống. API key không nằm ở Frontend.
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="reports" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>
+                Báo cáo & thống kê
+            </h2>
+
+            <p>
+                Thông tin phục vụ quản lý rạp
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="panel report">
+
+
+        <div class="report-number">
+            {{ "{:,.0f}".format(dashboard.revenue) }} ₫
+        </div>
+
+
+        <div>
+            Tổng doanh thu mẫu
+        </div>
+
+
+        <hr>
+
+
+        <p>
+            • {{ dashboard.ticket_count }}
+            vé đã thanh toán
+        </p>
+
+
+        <p>
+            • {{ dashboard.movie_count }}
+            phim trong danh mục
+        </p>
+
+
+        <p>
+            • {{ dashboard.show_count }}
+            suất chiếu
+        </p>
+
+
+        {% if user.role in ['Admin','Quản lý'] %}
+
+        <button
+            class="btn primary"
+            onclick="reportAI()"
+        >
+            ✦ Nhờ AI tóm tắt báo cáo
+        </button>
+
+        {% endif %}
+
+
+    </div>
+
+</section>
+
+</main>
+</div>
+
+
+<div id="movieModal" class="modal hidden">
+
+    <div class="modal-card">
+
+        <button
+            class="close"
+            onclick="closeModal('movieModal')"
+        >
+            ×
+        </button>
+
+        <h2>Thêm phim</h2>
+
+        <form method="post" action="/movies">
+
+            <input
+                name="title"
+                placeholder="Tên phim"
+                required
+            >
+
+            <input
+                name="genre"
+                placeholder="Thể loại"
+                required
+            >
+
+            <input
+                name="duration"
+                type="number"
+                min="1"
+                placeholder="Thời lượng (phút)"
+                required
+            >
+
+            <input
+                name="age"
+                value="T13"
+                placeholder="Độ tuổi"
+            >
+
+            <select name="status">
+                <option>Đang chiếu</option>
+                <option>Sắp chiếu</option>
+                <option>Ngừng chiếu</option>
+            </select>
+
+            <textarea
+                name="description"
+                placeholder="Mô tả phim"
+            ></textarea>
+
+            <button class="btn primary full">
+                Lưu phim
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+
+<script>
+const chartLabels = {{ dashboard.chart_labels|tojson }};
+const chartValues = {{ dashboard.chart_values|tojson }};
+
+let selectedSeats = [];
+let showtimes = [];
+
+function showPage(id) {
+    document.querySelectorAll('.page').forEach(function(page) {
+        page.classList.add('hidden');
+    });
+
+    const page = document.getElementById(id);
+
+    if (page) {
+        page.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.nav').forEach(function(nav) {
+        nav.classList.remove('active');
+    });
+
+    const link = document.querySelector('.nav[href="#' + id + '"]');
+
+    if (link) {
+        link.classList.add('active');
+    }
+
+    const titles = {
+        dashboard: 'Tổng quan',
+        movies: 'Quản lý phim',
+        showtimes: 'Suất chiếu',
+        rooms: 'Phòng & Ghế',
+        tickets: 'Bán vé & chọn ghế',
+        ai: 'Trợ lý AI Cinema',
+        reports: 'Báo cáo & thống kê'
+    };
+
+    const title = document.getElementById('page-title');
+
+    if (title) {
+        title.innerText = titles[id] || 'Cinema';
+    }
+
+    if (id === 'showtimes' || id === 'tickets') {
+        loadShowtimes();
+    }
+
+    if (id === 'rooms') {
+        showRoomSeats(60, 'Phòng 01');
+    }
+
+    location.hash = id;
+}
+
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+
+async function loadShowtimes() {
+    try {
+        const response = await fetch('/api/showtimes');
+
+        if (!response.ok) {
+            throw new Error('Không tải được suất chiếu');
+        }
+
+        showtimes = await response.json();
+
+        const rows = document.getElementById('showtimeRows');
+
+        if (rows) {
+            rows.innerHTML = showtimes.map(function(s) {
+                return `
+                    <tr>
+                        <td><b>${s.title}</b></td>
+                        <td>${s.room}</td>
+                        <td>${s.show_date}</td>
+                        <td>${s.show_time}</td>
+                        <td>${Number(s.price).toLocaleString('vi-VN')} ₫</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        const select = document.getElementById('ticketShow');
+
+        if (select) {
+            select.innerHTML = showtimes.map(function(s) {
+                return `
+                    <option value="${s.id}">
+                        ${s.title} · ${s.show_date} ${s.show_time} · ${s.room}
+                    </option>
+                `;
+            }).join('');
+        }
+
+        selectedSeats = [];
+        renderSeats();
+        updateTotal();
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+
+function renderSeats() {
+    const wrap = document.getElementById('seats');
+
+    if (!wrap) {
+        return;
+    }
+
+    wrap.innerHTML = '';
+
+    for (let r = 0; r < 5; r++) {
+
+        for (let c = 1; c <= 8; c++) {
+
+            const name =
+                String.fromCharCode(65 + r) +
+                String(c).padStart(2, '0');
+
+            const button = document.createElement('button');
+
+            button.className = 'seat';
+            button.innerText = name;
+
+            button.onclick = function() {
+
+                if (selectedSeats.includes(name)) {
+
+                    selectedSeats =
+                        selectedSeats.filter(function(x) {
+                            return x !== name;
+                        });
+
+                    button.classList.remove('chosen');
+
+                } else {
+
+                    selectedSeats.push(name);
+                    button.classList.add('chosen');
+                }
+
+                updateTotal();
+            };
+
+            wrap.appendChild(button);
+        }
+    }
+}
+
+
+function showRoomSeats(total, title) {
+
+    const titleBox = document.getElementById('roomTitle');
+    const wrap = document.getElementById('roomSeats');
+
+    if (!wrap) {
+        return;
+    }
+
+    if (titleBox) {
+        titleBox.innerText = title;
+    }
+
+    wrap.innerHTML = '';
+
+    const rows = 5;
+    const cols = Math.ceil(total / rows);
+
+    for (let r = 0; r < rows; r++) {
+
+        for (let c = 1; c <= cols; c++) {
+
+            const number = r * cols + c;
+
+            if (number > total) {
+                break;
+            }
+
+            const name =
+                String.fromCharCode(65 + r) +
+                String(c).padStart(2, '0');
+
+            const button = document.createElement('button');
+
+            button.className = 'seat';
+            button.innerText = name;
+
+            wrap.appendChild(button);
+        }
+    }
+}
+
+
+function updateTotal() {
+
+    const summary = document.getElementById('seatSummary');
+    const totalBox = document.getElementById('total');
+    const select = document.getElementById('ticketShow');
+
+    if (!summary || !totalBox || !select) {
+        return;
+    }
+
+    summary.innerText =
+        selectedSeats.length > 0
+        ? selectedSeats.join(', ')
+        : 'Chưa chọn';
+
+    const show = showtimes.find(function(x) {
+        return String(x.id) === select.value;
+    });
+
+    const total =
+        show
+        ? Number(show.price) * selectedSeats.length
+        : 0;
+
+    totalBox.innerText =
+        total.toLocaleString('vi-VN') + ' ₫';
+}
+
+
+async function sellTicket() {
+
+    const select = document.getElementById('ticketShow');
+    const customerInput = document.getElementById('customerName');
+    const messageBox = document.getElementById('ticketMsg');
+
+    const showtimeId = select.value;
+    const customerName = customerInput.value.trim();
+
+    if (!customerName) {
+        messageBox.innerHTML =
+            '<div class="alert">Vui lòng nhập tên khách hàng.</div>';
+        return;
+    }
+
+    if (selectedSeats.length === 0) {
+        messageBox.innerHTML =
+            '<div class="alert">Vui lòng chọn ít nhất một ghế.</div>';
+        return;
+    }
+
+    try {
+
+        const response = await fetch('/api/tickets', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                showtime_id: showtimeId,
+                customer_name: customerName,
+                seats: selectedSeats
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+
+            messageBox.innerHTML =
+                '<div class="success">✓ Thanh toán thành công. Vé điện tử đã được tạo.</div>';
+
+            selectedSeats = [];
+
+            renderSeats();
+            updateTotal();
+
+        } else {
+
+            messageBox.innerHTML =
+                '<div class="alert">' +
+                (data.message || data.error || 'Có lỗi xảy ra.') +
+                '</div>';
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        messageBox.innerHTML =
+            '<div class="alert">Không thể kết nối máy chủ.</div>';
+    }
+}
+
+
+async function askAI() {
+
+    const input = document.getElementById('aiInput');
+
+    if (!input) {
+        return;
+    }
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    addMsg(message, 'user');
+
+    input.value = '';
+
+    addMsg('AI đang xử lý...', 'ai loading');
+
+    try {
+
+        const response = await fetch('/api/ai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message
+            })
+        });
+
+        const data = await response.json();
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            data.answer || data.error || 'Không có phản hồi.',
+            'ai'
+        );
+
+    } catch (error) {
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            'Không thể kết nối đến AI.',
+            'ai'
+        );
+    }
+}
+
+
+function addMsg(text, type) {
+
+    const chatbox = document.getElementById('chatbox');
+
+    if (!chatbox) {
+        return;
+    }
+
+    const message = document.createElement('div');
+
+    message.className = 'msg ' + type;
+    message.innerText = text;
+
+    chatbox.appendChild(message);
+
+    chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+
+async function recommend() {
+
+    addMsg('Đang lấy gợi ý...', 'ai loading');
+
+    try {
+
+        const response =
+            await fetch('/api/ai/recommend');
+
+        const data =
+            await response.json();
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            data.answer || data.error || 'Không có dữ liệu.',
+            'ai'
+        );
+
+    } catch (error) {
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            'Không thể kết nối đến AI.',
+            'ai'
+        );
+    }
+}
+
+
+async function reportAI() {
+
+    showPage('ai');
+
+    addMsg(
+        'Đang phân tích báo cáo...',
+        'ai loading'
+    );
+
+    try {
+
+        const response =
+            await fetch('/api/ai/report');
+
+        const data =
+            await response.json();
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            data.answer || data.error || 'Không có dữ liệu.',
+            'ai'
+        );
+
+    } catch (error) {
+
+        document.querySelector('.loading')?.remove();
+
+        addMsg(
+            'Không thể kết nối đến AI.',
+            'ai'
+        );
+    }
+}
+
+
+document.getElementById('aiInput')?.addEventListener(
+    'keydown',
+    function(event) {
+
+        if (event.key === 'Enter') {
+            askAI();
+        }
+    }
+);
+
+
+document.getElementById('ticketShow')?.addEventListener(
+    'change',
+    function() {
+
+        selectedSeats = [];
+
+        renderSeats();
+        updateTotal();
+    }
+);
+
+
+window.addEventListener('load', function() {
+
+    const id =
+        location.hash.substring(1) || 'dashboard';
+
+    if (document.getElementById(id)) {
+        showPage(id);
+    } else {
+        showPage('dashboard');
+    }
+});
+
+
+const chartElement =
+    document.getElementById('revenueChart');
+
+if (chartElement && typeof Chart !== 'undefined') {
+
+    new Chart(
+        chartElement,
+        {
+            type: 'bar',
+
+            data: {
+                labels: chartLabels,
+
+                datasets: [{
+                    label: 'Doanh thu',
+                    data: chartValues
+                }]
+            },
+
+            options: {
+                responsive: true,
+
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        }
+    );
+}
+</script>
+
+</body>
+</html>

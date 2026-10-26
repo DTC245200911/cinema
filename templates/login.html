@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đăng nhập | Cinema AI</title><link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+<div class="login-card">
+  <div class="brand big">🎬 <span>Cinema<span class="accent">AI</span></span></div>
+  <p class="muted">Hệ thống quản lý rạp chiếu phim có tích hợp AI</p>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <label>Tài khoản</label><input name="username" placeholder="admin" required>
+    <label>Mật khẩu</label><input type="password" name="password" placeholder="123456" required>
+    <button class="btn primary full">Đăng nhập</button>
+  </form>
+  <div class="demo-login">Demo: <b>admin</b> / <b>123456</b></div>
+</div>
+</body></html>
