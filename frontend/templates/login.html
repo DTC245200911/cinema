@@ -9,11 +9,16 @@
   <div class="brand big">🎬 <span>Cinema<span class="accent">AI</span></span></div>
   <p class="muted">Hệ thống quản lý rạp chiếu phim có tích hợp AI</p>
   {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  {% if setup_required %}
+  <div class="alert">
+    Chưa có tài khoản đăng nhập. Quản trị viên cần đặt biến môi trường
+    <code>CINEMA_ADMIN_PASSWORD</code> (ít nhất 12 ký tự) rồi khởi động lại ứng dụng.
+  </div>
+  {% endif %}
   <form method="post" action="/login">
-    <label>Tài khoản</label><input name="username" placeholder="admin" required>
-    <label>Mật khẩu</label><input type="password" name="password" placeholder="123456" required>
+    <label>Tài khoản</label><input name="username" autocomplete="username" required>
+    <label>Mật khẩu</label><input type="password" name="password" autocomplete="current-password" required>
     <button class="btn primary full">Đăng nhập</button>
   </form>
-  <div class="demo-login">Demo: <b>admin</b> / <b>123456</b></div>
 </div>
 </body></html>

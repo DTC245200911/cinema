@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cinema AI Management</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">🎬 <span>Cinema<span class="accent">AI</span></span></div>
+
+        <div class="userbox">
+            <div class="avatar">{{ user.username[0]|upper }}</div>
+            <div>
+                <b>{{ user.username }}</b>
+                <small>{{ user.role }}</small>
+            </div>
+        </div>
+
+        <nav>
+            <a class="nav active" href="#dashboard" onclick="showPage('dashboard')">
+                ▦ <span>Dashboard</span>
+            </a>
+
+            <a class="nav" href="#movies" onclick="showPage('movies')">
+                🎟 <span>Quản lý phim</span>
+            </a>
+
+            <a class="nav" href="#showtimes" onclick="showPage('showtimes')">
+                🕐 <span>Suất chiếu</span>
+            </a>
+            <a class="nav" href="#rooms" onclick="showPage('rooms')">
+                🏢 <span>Phòng & Ghế</span>
+            </a>
+
+            <a class="nav" href="#tickets" onclick="showPage('tickets')">
+                🎟 <span>Bán vé</span>
+            </a>
+
+            <a class="nav" href="#ai" onclick="showPage('ai')">
+                ✦ <span>Trợ lý AI</span>
+            </a>
+
+            {% if user.role in ['Admin','Quản lý'] %}
+            <a class="nav" href="#reports" onclick="showPage('reports')">
+                ▣ <span>Báo cáo</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <a class="logout" href="/logout">↪ Đăng xuất</a>
+    </aside>
+
+ <main class="main">
+
+        <header class="topbar">
+            <div>
+                <h1 id="page-title">Tổng quan</h1>
+                <p>Quản lý rạp chiếu phim thông minh</p>
+            </div>
+
+            <div class="top-actions">
+                <span class="status-dot">● Hệ thống hoạt động</span>
+                <span class="role-pill">{{ user.role }}</span>
+            </div>
+        </header>
+
+<section id="dashboard" class="page">
+    <div class="stats">
+        {% if can_view_reports %}
+        <div class="stat">
+            <span>Doanh thu</span>
+            <strong>{{ "{:,.0f}".format(dashboard.revenue) }} ₫</strong>
+            <i>↗</i>
+        </div>
+
+        <div class="stat">
+            <span>Vé đã bán</span>
+            <strong>{{ dashboard.ticket_count }}</strong>
+            <i>↗</i>
+        </div>
+        {% endif %}
+
+        <div class="stat">
+            <span>Phim</span>
+            <strong>{{ dashboard.movie_count }}</strong>
+            <i>●</i>
+        </div>
+
+        <div class="stat">
+            <span>Suất chiếu</span>
+            <strong>{{ dashboard.show_count }}</strong>
+            <i>●</i>
+        </div>
+    </div>
+
+    <div class="grid2">
+        {% if can_view_reports %}
+        <div class="panel">
+            <div class="panel-head">
+                <h3>Doanh thu theo phim</h3>
+                <span class="badge">Live</span>
+            </div>
+            <canvas id="revenueChart"></canvas>
+        </div>
+        {% endif %}
+
+        <div class="panel ai-highlight">
+            <div class="ai-icon">✦</div>
+            <h2>AI Cinema Assistant</h2>
+            <p>Gợi ý phim, tư vấn suất chiếu và tóm tắt báo cáo.</p>
+            <button class="btn primary" onclick="showPage('ai')">
+                Mở trợ lý AI →
+            </button>
+        </div>
+    </div>
+</section>
+
+
+<section id="movies" class="page hidden">
+
+    <div class="section-head">
+        <div>
+            <h2>Quản lý phim</h2>
+            <p>Thêm, sửa, xóa và tìm kiếm danh mục phim</p>
+        </div>
+
+        {% if user.role in ['Admin','Quản lý'] %}
+        <button
+            class="btn primary"
+            onclick="newMovie()"
+        >
+            + Thêm phim
+        </button>
+        {% endif %}
+    </div>
+
+    <form class="search" method="get" action="/">
+        <input
+            name="q"
+            value="{{ q }}"
+            placeholder="🔎 Tìm theo tên phim hoặc thể loại..."
+        >
+
+        <button class="btn">
+            Tìm
+        </button>
+    </form>
+
+    <div class="cards">
+
+        {% for m in movies %}
+
+        <div class="movie-card">
+
+            <div class="poster">
+                {{ ['🎬','🍿','🦇','🌊'][loop.index0 % 4] }}
+            </div>
+
+            <div class="movie-info">
+
+                <div class="tag">
+                    {{ m.genre }}
+                </div>
+
+                <h3>
+                    {{ m.title }}
+                </h3>
+
+                <p>
+                    {{ m.description }}
+                </p>
+
+                <div class="movie-meta">
+                    {{ m.duration }} phút · {{ m.age }} · {{ m.status }}
+                </div>
+
+                {% if user.role in ['Admin','Quản lý'] %}
+
+                <button class="link" type="button" onclick="editMovie(this)"
+                    data-id="{{ m.id }}" data-title="{{ m.title }}" data-genre="{{ m.genre }}"
+                    data-duration="{{ m.duration }}" data-age="{{ m.age }}"
+                    data-description="{{ m.description }}" data-status="{{ m.status }}">
+                    Sửa phim
+                </button>
+
+                <form
+                    method="post"
+                    action="/movies/{{ m.id }}/delete"
+                    onsubmit="return deleteManagementItem(event, 'Xóa phim này?')"
+                >
+                    <button class="link danger">
+                        Xóa phim
+                    </button>
+                </form>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+
+<section id="showtimes" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Suất chiếu</h2>
+            <p>Thêm, sửa, xóa và kiểm tra lịch chiếu theo phim, phòng và thời gian</p>
+        </div>
+
+        {% if user.role in ['Admin','Quản lý'] %}
+        <button class="btn primary" type="button" onclick="newShowtime()">+ Thêm suất chiếu</button>
+        {% endif %}
+
+    </div>
+
+    <div class="panel">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Phim</th>
+                    <th>Phòng</th>
+                    <th>Ngày</th>
+                    <th>Giờ</th>
+                    <th>Giá vé</th>
+                    {% if user.role in ['Admin','Quản lý'] %}<th>Thao tác</th>{% endif %}
+                </tr>
+            </thead>
+
+            <tbody id="showtimeRows" aria-live="polite">
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+<section id="rooms" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Phòng & Ghế</h2>
+            <p>Xem sơ đồ ghế cố định và trạng thái đặt chỗ theo suất chiếu</p>
+        </div>
+
+    </div>
+
+    <div class="room-grid">
+
+        <div class="panel">
+
+            <h3>Danh sách phòng</h3>
+
+            <div id="roomList" aria-live="polite"></div>
+            <div id="roomMessage" class="form-message" role="status" aria-live="polite"></div>
+
+        </div>
+
+
+        <div class="panel">
+
+            <div class="panel-head">
+
+                <div>
+                    <h3 id="roomTitle">
+                        Phòng 01
+                    </h3>
+
+                    <p id="roomCapacity">Chọn suất chiếu để xem trạng thái ghế</p>
+                </div>
+
+                <span class="badge">
+                    Chỉ xem
+                </span>
+
+            </div>
+
+            <label for="roomShow">Suất chiếu</label>
+            <select id="roomShow" aria-label="Suất chiếu cần xem ghế"></select>
+
+            <div class="screen">
+                MÀN HÌNH
+            </div>
+
+
+            <div
+                class="seats"
+                id="roomSeats"
+                aria-live="polite"
+            ></div>
+
+
+            <div class="legend">
+
+                <span>
+                    □ Ghế trống
+                </span>
+
+                <span class="selected">
+                    ■ Đã đặt
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="tickets" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Bán vé & chọn ghế</h2>
+            <p>
+                Kiểm tra ghế trùng trước khi thanh toán
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="ticket-layout">
+
+
+        <div class="panel">
+
+            <h3>
+                Chọn suất chiếu
+            </h3>
+
+
+            <select id="ticketShow" aria-label="Suất chiếu bán vé">
+            </select>
+
+
+            <input
+                id="customerName"
+                placeholder="Tên khách hàng"
+            >
+
+
+            <div class="screen">
+                MÀN HÌNH
+            </div>
+
+
+            <div
+                class="seats"
+                id="seats"
+                aria-live="polite"
+            ></div>
+
+
+            <div class="legend">
+
+                <span>
+                    □ Trống
+                </span>
+
+                <span class="selected">
+                    ■ Đang chọn
+                </span>
+
+                <span class="sold">
+                    ■ Đã bán
+                </span>
+
+            </div>
+
+
+            <button
+                id="sellTicketButton"
+                class="btn primary full"
+                disabled
+                onclick="sellTicket()"
+            >
+                Thanh toán & xuất vé
+            </button>
+
+
+            <div id="ticketMsg" role="status" aria-live="polite">
+            </div>
+
+        </div>
+
+
+
+        <div class="panel summary">
+
+            <h3>
+                Hóa đơn tạm tính
+            </h3>
+
+
+            <p>
+                Ghế:
+
+                <b id="seatSummary">
+                    Chưa chọn
+                </b>
+            </p>
+
+
+            <p>
+                Tạm tính:
+
+                <strong id="total">
+                    0 ₫
+                </strong>
+            </p>
+
+
+            <div class="qr">
+                ▦
+
+                <small>
+                    QR VÉ ĐIỆN TỬ
+                </small>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="ai" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>
+                Trợ lý AI Cinema
+            </h2>
+
+            <p>
+                Hỗ trợ tư vấn phim và suất chiếu
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="ai-grid">
+
+
+        <div class="panel chat">
+
+            <div
+                id="chatbox"
+                class="chatbox"
+                role="log"
+                aria-live="polite"
+                aria-relevant="additions"
+            >
+
+                <div class="msg ai">
+                    Xin chào! Tôi có thể tra cứu phim, thể loại, lịch chiếu và doanh thu từ dữ liệu Cinema.
+                    Hãy nhập câu hỏi hoặc chọn một gợi ý bên cạnh.
+                </div>
+
+            </div>
+
+
+            <div class="chat-input">
+
+                <input
+                    id="aiInput"
+                    placeholder="Ví dụ: Gợi ý phim khoa học viễn tưởng..."
+                >
+
+
+                <button
+                    id="aiSend"
+                    class="btn primary"
+                    onclick="askAI()"
+                >
+                    Gửi
+                </button>
+
+            </div>
+
+            <div class="ai-suggestions" aria-label="Câu hỏi gợi ý">
+                <button type="button" class="ai-suggestion"
+                    onclick="askSuggestedQuestion('Gợi ý thể loại đang có')">Thể loại đang có</button>
+                <button type="button" class="ai-suggestion"
+                    onclick="askSuggestedQuestion('Có phim hoạt hình nào?')">Phim hoạt hình</button>
+                <button type="button" class="ai-suggestion"
+                    onclick="askSuggestedQuestion('Lịch chiếu hiện có')">Lịch chiếu</button>
+            </div>
+
+        </div>
+
+
+
+        <div class="panel">
+
+            <h3>
+                AI gợi ý nhanh
+            </h3>
+
+
+            <button
+                class="ai-action"
+                onclick="recommend()"
+            >
+                ✦ Gợi ý phim đang chiếu
+            </button>
+
+
+            <h3>
+                AI báo cáo
+            </h3>
+
+            {% if can_view_reports %}
+            <button
+                class="ai-action"
+                onclick="reportAI()"
+            >
+                ◫ Tóm tắt doanh thu
+            </button>
+            {% else %}
+            <p class="muted">Báo cáo doanh thu chỉ dành cho Quản lý/Admin.</p>
+            {% endif %}
+
+
+            <div class="ai-note">
+
+                Câu hỏi tra cứu Cinema được xử lý nội bộ. Câu hỏi mở sẽ được gửi
+                tới Google Gemini; API key không được gửi xuống trình duyệt.
+                {% if gemini_share_cinema_data %}
+                Đang bật chia sẻ danh mục phim và lịch chiếu sắp tới với Gemini.
+                {% else %}
+                Theo mặc định, không gửi dữ liệu phim, lịch chiếu, ghế hoặc doanh thu cho Gemini.
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+{% if can_view_reports %}
+<section id="reports" class="page hidden">
+
+    <div class="section-head">
+
+        <div>
+            <h2>
+                Báo cáo & thống kê
+            </h2>
+
+            <p>
+                Thông tin phục vụ quản lý rạp
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="panel report">
+
+
+        <div class="report-number">
+            {{ "{:,.0f}".format(dashboard.revenue) }} ₫
+        </div>
+
+
+        <div>
+            Tổng doanh thu mẫu
+        </div>
+
+
+        <hr>
+
+
+        <p>
+            • {{ dashboard.ticket_count }}
+            vé đã thanh toán
+        </p>
+
+
+        <p>
+            • {{ dashboard.movie_count }}
+            phim trong danh mục
+        </p>
+
+
+        <p>
+            • {{ dashboard.show_count }}
+            suất chiếu
+        </p>
+
+
+        {% if user.role in ['Admin','Quản lý'] %}
+        <button
+            class="btn primary"
+            onclick="reportAI()"
+        >
+            ✦ Nhờ AI tóm tắt báo cáo
+        </button>
+        {% endif %}
+
+        {% if user.role == 'Admin' %}
+        <hr>
+        <h3>Sao lưu & khôi phục dữ liệu</h3>
+        <p>Tạo bản SQLite nhất quán hoặc khôi phục từ một bản sao lưu hợp lệ.</p>
+        <a class="btn" href="/api/admin/database/backup">Tải bản sao lưu</a>
+        <form id="restoreForm" class="restore-form">
+            <label for="backupFile">Tệp sao lưu (.sqlite3, .sqlite, .db)</label>
+            <input id="backupFile" name="file" type="file" accept=".sqlite3,.sqlite,.db" required>
+            <button class="btn danger" type="submit">Khôi phục dữ liệu</button>
+            <div id="restoreMessage" class="form-message"></div>
+        </form>
+        {% endif %}
+
+
+    </div>
+
+</section>
+{% endif %}
+
+</main>
+</div>
+
+
+<div id="movieModal" class="modal hidden">
+
+    <div class="modal-card">
+
+        <button
+            class="close"
+            onclick="closeModal('movieModal')"
+        >
+            ×
+        </button>
+
+        <h2 id="movieModalTitle">Thêm phim</h2>
+
+        <form id="movieForm" method="post" action="/movies" onsubmit="submitManagementForm(event)">
+
+            <input
+                name="title"
+                placeholder="Tên phim"
+                required
+            >
+
+            <input
+                name="genre"
+                placeholder="Thể loại"
+                required
+            >
+
+            <input
+                name="duration"
+                type="number"
+                min="1"
+                placeholder="Thời lượng (phút)"
+                required
+            >
+
+            <input
+                name="age"
+                value="T13"
+                placeholder="Độ tuổi"
+            >
+
+            <select name="status">
+                <option>Đang chiếu</option>
+                <option>Sắp chiếu</option>
+                <option>Ngừng chiếu</option>
+            </select>
+
+            <textarea
+                name="description"
+                placeholder="Mô tả phim"
+            ></textarea>
+
+            <div class="form-message"></div>
+            <button class="btn primary full">
+                Lưu phim
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+<div id="showtimeModal" class="modal hidden">
+    <div class="modal-card">
+        <button class="close" type="button" onclick="closeModal('showtimeModal')">×</button>
+        <h2 id="showtimeModalTitle">Thêm suất chiếu</h2>
+        <form id="showtimeForm" method="post" action="/showtimes" onsubmit="submitManagementForm(event)">
+            <label>Phim</label>
+            <select name="movie_id" required>
+                {% for m in all_movies %}
+                <option value="{{ m.id }}">{{ m.title }}</option>
+                {% endfor %}
+            </select>
+            <label>Phòng chiếu</label>
+            <select name="room_id" required>
+                {% for room in rooms %}
+                <option value="{{ room.id }}">{{ room.name }} ({{ room.capacity }} ghế)</option>
+                {% endfor %}
+            </select>
+            <label>Ngày chiếu</label>
+            <input name="show_date" type="date" required>
+            <label>Giờ chiếu</label>
+            <input name="show_time" type="time" required>
+            <label>Giá vé (VNĐ)</label>
+            <input name="price" type="number" min="1000" step="1000" required>
+            <small class="muted">Nhập số tiền theo bội số 1.000 VNĐ.</small>
+            <div class="form-message"></div>
+            <button class="btn primary full">Lưu suất chiếu</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const chartLabels = {{ dashboard.chart_labels|tojson }};
+const chartValues = {{ dashboard.chart_values|tojson }};
+const canManage = {{ (user.role in ['Admin','Quản lý'])|tojson }};
+
+let selectedSeats = [];
+let showtimes = [];
+let rooms = [];
+let showtimeRequestId = 0;
+let roomsRequestId = 0;
+let seatRequestId = 0;
+let roomSeatRequestId = 0;
+let chatRequestCount = 0;
+
+async function requestJson(url, options) {
+    const response = await fetch(url, options);
+    let payload;
+    try {
+        payload = await response.json();
+    } catch (error) {
+        throw new Error(response.ok
+            ? 'Máy chủ trả về dữ liệu không hợp lệ.'
+            : 'Yêu cầu thất bại (HTTP ' + response.status + ').');
+    }
+    if (payload === null || typeof payload !== 'object') {
+        throw new Error('Máy chủ trả về dữ liệu không đúng định dạng.');
+    }
+    if (!response.ok) {
+        const errorMessage = payload && typeof payload === 'object'
+            ? payload.error || payload.message || payload.detail
+            : null;
+        throw new Error(typeof errorMessage === 'string' ? errorMessage :
+            'Yêu cầu thất bại (HTTP ' + response.status + ').');
+    }
+    return payload;
+}
+
+function seatNamesForCapacity(capacity) {
+    const columns = Math.ceil(capacity / 5);
+    return Array.from({ length: capacity }, function(_, offset) {
+        const row = Math.floor(offset / columns);
+        const column = offset % columns;
+        return String.fromCharCode(65 + row) + String(column + 1).padStart(2, '0');
+    });
+}
+
+function validateSoldSeats(capacity, sold) {
+    if (!Array.isArray(sold) || sold.some(function(name) {
+        return typeof name !== 'string';
+    })) {
+        throw new Error('Dữ liệu trạng thái ghế không đúng định dạng.');
+    }
+    const validSeats = new Set(seatNamesForCapacity(capacity));
+    if (sold.some(function(name) { return !validSeats.has(name); }) ||
+        new Set(sold).size !== sold.length) {
+        throw new Error('Dữ liệu ghế đã đặt không khớp với sức chứa phòng.');
+    }
+}
+
+function showTableMessage(row, text, isError) {
+    if (!row) {
+        return;
+    }
+    row.replaceChildren();
+    const cell = document.createElement('td');
+    cell.colSpan = canManage ? 6 : 5;
+    cell.className = isError ? 'alert' : 'muted table-message';
+    if (isError) {
+        cell.setAttribute('role', 'alert');
+    }
+    cell.textContent = text;
+    if (isError) {
+        appendRetryButton(cell, loadShowtimes);
+    }
+    row.appendChild(cell);
+}
+
+function appendRetryButton(container, action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn';
+    button.textContent = 'Thử lại';
+    button.addEventListener('click', action);
+    container.appendChild(button);
+}
+
+function showPage(id) {
+    document.querySelectorAll('.page').forEach(function(page) {
+        page.classList.add('hidden');
+    });
+
+    const page = document.getElementById(id);
+
+    if (page) {
+        page.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.nav').forEach(function(nav) {
+        nav.classList.remove('active');
+    });
+
+    const link = document.querySelector('.nav[href="#' + id + '"]');
+
+    if (link) {
+        link.classList.add('active');
+    }
+
+    const titles = {
+        dashboard: 'Tổng quan',
+        movies: 'Quản lý phim',
+        showtimes: 'Suất chiếu',
+        rooms: 'Phòng & Ghế',
+        tickets: 'Bán vé & chọn ghế',
+        ai: 'Trợ lý AI Cinema',
+        reports: 'Báo cáo & thống kê'
+    };
+
+    const title = document.getElementById('page-title');
+
+    if (title) {
+        title.innerText = titles[id] || 'Cinema';
+    }
+
+    if (id === 'showtimes' || id === 'tickets') {
+        loadShowtimes();
+    }
+
+    if (id === 'rooms') {
+        loadRooms();
+    }
+
+    location.hash = id;
+}
+
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function clearFormMessage(form) {
+    const message = form.querySelector('.form-message');
+    if (message) {
+        message.textContent = '';
+        message.className = 'form-message';
+    }
+}
+
+function showFormMessage(form, text, isError) {
+    const message = form.querySelector('.form-message');
+    if (message) {
+        message.textContent = text;
+        message.className = 'form-message ' + (isError ? 'alert' : 'success');
+    }
+}
+
+async function submitManagementForm(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    clearFormMessage(form);
+    try {
+        const payload = await requestJson(form.action, {
+            method: 'POST',
+            body: new FormData(form)
+        });
+        if (!payload || payload.ok === false) {
+            throw new Error(payload.message || 'Không thể lưu dữ liệu.');
+        }
+        location.reload();
+    } catch (error) {
+        showFormMessage(form, error.message || 'Không thể kết nối máy chủ.', true);
+    }
+    return false;
+}
+
+async function deleteManagementItem(event, promptText) {
+    event.preventDefault();
+    if (!confirm(promptText)) {
+        return false;
+    }
+    try {
+        const payload = await requestJson(event.currentTarget.action, { method: 'POST' });
+        if (!payload || payload.ok === false) {
+            throw new Error(payload.message || 'Không thể xóa dữ liệu.');
+        }
+        location.reload();
+    } catch (error) {
+        alert(error.message || 'Không thể kết nối máy chủ.');
+    }
+    return false;
+}
+
+async function deleteRecord(url, promptText) {
+    if (!confirm(promptText)) {
+        return;
+    }
+    try {
+        const payload = await requestJson(url, { method: 'POST' });
+        if (!payload || !payload.ok) {
+            throw new Error(payload.message || 'Không thể xóa dữ liệu.');
+        }
+        location.reload();
+    } catch (error) {
+        alert(error.message || 'Không thể kết nối máy chủ.');
+    }
+}
+
+function newMovie() {
+    const form = document.getElementById('movieForm');
+    form.reset();
+    form.action = '/movies';
+    document.getElementById('movieModalTitle').textContent = 'Thêm phim';
+    clearFormMessage(form);
+    openModal('movieModal');
+}
+
+function editMovie(button) {
+    const form = document.getElementById('movieForm');
+    form.action = '/movies/' + button.dataset.id;
+    form.elements.title.value = button.dataset.title;
+    form.elements.genre.value = button.dataset.genre;
+    form.elements.duration.value = button.dataset.duration;
+    form.elements.age.value = button.dataset.age;
+    form.elements.description.value = button.dataset.description;
+    form.elements.status.value = button.dataset.status;
+    document.getElementById('movieModalTitle').textContent = 'Sửa phim';
+    clearFormMessage(form);
+    openModal('movieModal');
+}
+
+function newShowtime() {
+    const form = document.getElementById('showtimeForm');
+    form.reset();
+    form.action = '/showtimes';
+    const today = new Date();
+    form.elements.show_date.value = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+    document.getElementById('showtimeModalTitle').textContent = 'Thêm suất chiếu';
+    clearFormMessage(form);
+    openModal('showtimeModal');
+}
+
+function editShowtime(showtime) {
+    const form = document.getElementById('showtimeForm');
+    form.action = '/showtimes/' + showtime.id;
+    form.elements.movie_id.value = showtime.movie_id;
+    form.elements.room_id.value = showtime.room_id;
+    form.elements.show_date.value = showtime.show_date;
+    form.elements.show_time.value = showtime.show_time;
+    form.elements.price.value = showtime.price;
+    document.getElementById('showtimeModalTitle').textContent = 'Sửa suất chiếu';
+    clearFormMessage(form);
+    openModal('showtimeModal');
+}
+
+async function loadShowtimes() {
+    const requestId = ++showtimeRequestId;
+    const rows = document.getElementById('showtimeRows');
+    const select = document.getElementById('ticketShow');
+    const previousShowId = select ? select.value : '';
+    showtimes = [];
+    selectedSeats = [];
+    if (rows) {
+        showTableMessage(rows, 'Đang tải suất chiếu…', false);
+    }
+    if (select) {
+        select.replaceChildren();
+        select.disabled = true;
+    }
+    seatRequestId++;
+    const seatWrap = document.getElementById('seats');
+    if (seatWrap) {
+        seatWrap.replaceChildren();
+        seatWrap.textContent = 'Đang tải sơ đồ ghế…';
+    }
+    const sellButton = document.getElementById('sellTicketButton');
+    if (sellButton) {
+        sellButton.disabled = true;
+    }
+    updateTotal();
+    try {
+        const data = await requestJson('/api/showtimes');
+        if (requestId !== showtimeRequestId) {
+            return false;
+        }
+        if (!Array.isArray(data)) {
+            throw new Error('Dữ liệu suất chiếu không đúng định dạng.');
+        }
+        showtimes = data;
+        if (rows) {
+            rows.replaceChildren();
+            if (!showtimes.length) {
+                showTableMessage(rows, 'Chưa có suất chiếu.', false);
+            }
+            showtimes.forEach(function(showtime) {
+                const row = document.createElement('tr');
+                [showtime.title, showtime.room, showtime.show_date, showtime.show_time,
+                 Number(showtime.price).toLocaleString('vi-VN') + ' ₫'].forEach(function(value) {
+                    const cell = document.createElement('td');
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+                if (canManage) {
+                    const actions = document.createElement('td');
+                    const edit = document.createElement('button');
+                    edit.className = 'btn';
+                    edit.type = 'button';
+                    edit.textContent = 'Sửa';
+                    edit.addEventListener('click', function() { editShowtime(showtime); });
+                    const remove = document.createElement('button');
+                    remove.className = 'btn danger';
+                    remove.type = 'button';
+                    remove.textContent = 'Xóa';
+                    remove.addEventListener('click', function() {
+                        deleteRecord('/showtimes/' + showtime.id + '/delete', 'Xóa suất chiếu này?');
+                    });
+                    actions.append(edit, remove);
+                    row.appendChild(actions);
+                }
+                rows.appendChild(row);
+            });
+        }
+
+        if (select) {
+            select.replaceChildren();
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = showtimes.length
+                ? 'Chọn suất chiếu'
+                : 'Chưa có suất chiếu';
+            placeholder.disabled = showtimes.length > 0;
+            placeholder.selected = true;
+            select.appendChild(placeholder);
+            showtimes.forEach(function(showtime) {
+                const option = document.createElement('option');
+                option.value = showtime.id;
+                option.textContent = showtime.title + ' · ' + showtime.show_date + ' ' +
+                    showtime.show_time + ' · ' + showtime.room;
+                select.appendChild(option);
+            });
+            if (showtimes.some(function(showtime) {
+                return String(showtime.id) === previousShowId;
+            })) {
+                select.value = previousShowId;
+            } else if (showtimes.length) {
+                select.value = String(showtimes[0].id);
+            }
+            select.disabled = showtimes.length === 0;
+        }
+
+        await renderSeats();
+        updateTotal();
+        return true;
+    } catch (error) {
+        if (requestId !== showtimeRequestId) {
+            return false;
+        }
+        showtimes = [];
+        showTableMessage(rows, error.message || 'Không tải được suất chiếu.', true);
+        if (select) {
+            select.replaceChildren();
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Không tải được suất chiếu';
+            select.appendChild(option);
+            select.disabled = true;
+        }
+        selectedSeats = [];
+        if (seatWrap) {
+            seatWrap.replaceChildren();
+            seatWrap.textContent = 'Không thể tải sơ đồ ghế. Vui lòng thử tải lại mục này.';
+        }
+        if (sellButton) {
+            sellButton.disabled = true;
+        }
+        setTicketMessage(error.message || 'Không tải được dữ liệu suất chiếu.', false);
+        updateTotal();
+        return false;
+    }
+}
+
+async function renderSeats() {
+    const wrap = document.getElementById('seats');
+    if (!wrap) {
+        return;
+    }
+    const requestId = ++seatRequestId;
+    wrap.replaceChildren();
+    const select = document.getElementById('ticketShow');
+    const showId = select.value;
+    const sellButton = document.getElementById('sellTicketButton');
+    if (!showId) {
+        wrap.textContent = 'Chọn suất chiếu để xem sơ đồ ghế.';
+        if (sellButton) {
+            sellButton.disabled = true;
+        }
+        updateTotal();
+        return;
+    }
+    wrap.textContent = 'Đang tải sơ đồ ghế…';
+    if (sellButton) {
+        sellButton.disabled = true;
+    }
+    try {
+        const data = await requestJson('/api/showtimes/' + showId + '/seats');
+        if (requestId !== seatRequestId) {
+            return;
+        }
+        if (!Number.isInteger(data.capacity) || data.capacity <= 0) {
+            throw new Error('Dữ liệu sơ đồ ghế không đúng định dạng.');
+        }
+        validateSoldSeats(data.capacity, data.sold);
+        const columns = Math.ceil(data.capacity / 5);
+        wrap.replaceChildren();
+        wrap.style.setProperty('--seat-columns', columns);
+        const sold = new Set(data.sold);
+        seatNamesForCapacity(data.capacity).forEach(function(name) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'seat';
+            button.textContent = name;
+            button.disabled = sold.has(name);
+            if (button.disabled) {
+                button.classList.add('sold');
+                button.title = 'Ghế đã bán';
+                button.setAttribute('aria-label', name + ', đã bán');
+            } else {
+                button.setAttribute('aria-label', name + ', còn trống');
+                button.setAttribute('aria-pressed', 'false');
+                button.addEventListener('click', function() {
+                    document.getElementById('ticketMsg').replaceChildren();
+                    if (selectedSeats.includes(name)) {
+                        selectedSeats = selectedSeats.filter(function(seat) { return seat !== name; });
+                        button.classList.remove('chosen');
+                        button.setAttribute('aria-pressed', 'false');
+                    } else {
+                        selectedSeats.push(name);
+                        button.classList.add('chosen');
+                        button.setAttribute('aria-pressed', 'true');
+                    }
+                    updateTotal();
+                });
+            }
+            wrap.appendChild(button);
+        });
+        if (sellButton) {
+            sellButton.disabled = false;
+        }
+    } catch (error) {
+        if (requestId !== seatRequestId) {
+            return;
+        }
+        wrap.replaceChildren();
+        wrap.textContent = error.message || 'Không tải được sơ đồ ghế.';
+        appendRetryButton(wrap, renderSeats);
+        setTicketMessage(error.message || 'Không tải được sơ đồ ghế.', false);
+    }
+    updateTotal();
+}
+
+async function loadRooms() {
+    const requestId = ++roomsRequestId;
+    const list = document.getElementById('roomList');
+    const message = document.getElementById('roomMessage');
+    roomSeatRequestId++;
+    rooms = [];
+    if (list) {
+        list.textContent = 'Đang tải danh sách phòng…';
+    }
+    if (message) {
+        message.textContent = '';
+        message.className = 'form-message';
+    }
+    const seatWrap = document.getElementById('roomSeats');
+    seatWrap.replaceChildren();
+    seatWrap.textContent = 'Chọn phòng và suất chiếu để xem ghế đã đặt.';
+    document.getElementById('roomTitle').textContent = 'Đang tải phòng…';
+    document.getElementById('roomCapacity').textContent = '';
+    document.getElementById('roomShow').replaceChildren();
+    document.getElementById('roomShow').disabled = true;
+    try {
+        if (!showtimes.length) {
+            const loaded = await loadShowtimes();
+            if (requestId !== roomsRequestId) {
+                return;
+            }
+            if (!loaded) {
+                throw new Error('Suất chiếu chưa tải được nên chưa thể kiểm tra ghế phòng.');
+            }
+        }
+        const data = await requestJson('/api/rooms');
+        if (requestId !== roomsRequestId) {
+            return;
+        }
+        if (!Array.isArray(data) || data.some(function(room) {
+            return !Number.isInteger(room.id) || !Number.isInteger(room.capacity) ||
+                room.capacity <= 0 || !Number.isInteger(room.show_count) ||
+                typeof room.name !== 'string';
+        })) {
+            throw new Error('Dữ liệu phòng không đúng định dạng.');
+        }
+        rooms = data;
+        list.replaceChildren();
+        if (!rooms.length) {
+            list.textContent = 'Chưa có phòng trong hệ thống.';
+            document.getElementById('roomTitle').textContent = 'Chưa có phòng';
+            document.getElementById('roomCapacity').textContent = '';
+            const showSelect = document.getElementById('roomShow');
+            showSelect.replaceChildren();
+            showSelect.disabled = true;
+            seatWrap.textContent = 'Chưa có phòng để kiểm tra sơ đồ ghế.';
+            return;
+        }
+        rooms.forEach(function(room) {
+            const item = document.createElement('div');
+            item.className = 'room-item';
+            const info = document.createElement('div');
+            const name = document.createElement('b');
+            name.textContent = room.name;
+            const details = document.createElement('small');
+            details.textContent = room.capacity + ' ghế · ' + room.show_count + ' suất chiếu';
+            info.append(name, details);
+            const view = document.createElement('button');
+            view.className = 'btn';
+            view.type = 'button';
+            view.textContent = 'Xem ghế';
+            view.setAttribute('aria-pressed', 'false');
+            view.addEventListener('click', function() {
+                list.querySelectorAll('.room-item .btn').forEach(function(button) {
+                    button.setAttribute('aria-pressed', 'false');
+                });
+                view.setAttribute('aria-pressed', 'true');
+                selectRoom(room);
+            });
+            item.append(info, view);
+            list.appendChild(item);
+        });
+        const firstViewButton = list.querySelector('.room-item .btn');
+        firstViewButton.setAttribute('aria-pressed', 'true');
+        selectRoom(rooms[0]);
+    } catch (error) {
+        if (requestId !== roomsRequestId) {
+            return;
+        }
+        list.replaceChildren();
+        list.textContent = 'Không tải được danh sách phòng.';
+        document.getElementById('roomTitle').textContent = 'Không tải được phòng';
+        document.getElementById('roomCapacity').textContent = '';
+        document.getElementById('roomShow').replaceChildren();
+        document.getElementById('roomShow').disabled = true;
+        seatWrap.replaceChildren();
+        seatWrap.textContent = 'Không thể xác định trạng thái ghế.';
+        message.textContent = error.message || 'Không tải được danh sách phòng.';
+        message.className = 'form-message alert';
+        appendRetryButton(message, loadRooms);
+    }
+}
+
+function selectRoom(room) {
+    const showSelect = document.getElementById('roomShow');
+    const matching = showtimes.filter(function(showtime) {
+        return String(showtime.room_id) === String(room.id);
+    });
+    document.getElementById('roomTitle').textContent = room.name;
+    document.getElementById('roomCapacity').textContent = room.capacity + ' ghế cố định';
+    showSelect.replaceChildren();
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = matching.length
+        ? 'Chọn suất chiếu'
+        : 'Phòng chưa có suất chiếu';
+    placeholder.disabled = matching.length > 0;
+    placeholder.selected = true;
+    showSelect.appendChild(placeholder);
+    matching.forEach(function(showtime) {
+        const option = document.createElement('option');
+        option.value = showtime.id;
+        option.textContent = showtime.title + ' · ' + showtime.show_date + ' ' + showtime.show_time;
+        showSelect.appendChild(option);
+    });
+    showSelect.dataset.capacity = room.capacity;
+    showSelect.dataset.roomId = room.id;
+    showSelect.disabled = matching.length === 0;
+    if (matching.length) {
+        showSelect.value = String(matching[0].id);
+        showRoomSeats(room, showSelect.value);
+    } else {
+        roomSeatRequestId++;
+        const wrap = document.getElementById('roomSeats');
+        wrap.replaceChildren();
+        wrap.textContent = 'Chưa có suất chiếu; trạng thái ghế chưa thể xác định.';
+        document.getElementById('roomCapacity').textContent =
+            room.capacity + ' ghế cố định';
+        const message = document.getElementById('roomMessage');
+        message.textContent = 'Phòng này chưa có suất chiếu để kiểm tra ghế đã đặt.';
+        message.className = 'form-message';
+    }
+}
+
+async function showRoomSeats(room, showtimeId) {
+    const requestId = ++roomSeatRequestId;
+    const message = document.getElementById('roomMessage');
+    message.textContent = '';
+    message.className = 'form-message';
+    const wrap = document.getElementById('roomSeats');
+    wrap.replaceChildren();
+    wrap.textContent = 'Đang tải trạng thái ghế…';
+    try {
+        const data = await requestJson('/api/showtimes/' + showtimeId + '/seats');
+        if (requestId !== roomSeatRequestId) {
+            return;
+        }
+        if (!Number.isInteger(data.capacity) || data.capacity !== room.capacity) {
+            throw new Error('Sức chứa hoặc trạng thái ghế không khớp với dữ liệu phòng.');
+        }
+        validateSoldSeats(data.capacity, data.sold);
+        renderRoomSeatMap(room.capacity, new Set(data.sold));
+        const bookedCount = data.sold.length;
+        document.getElementById('roomCapacity').textContent =
+            room.capacity + ' ghế cố định · ' + bookedCount + ' ghế đã đặt';
+    } catch (error) {
+        if (requestId !== roomSeatRequestId) {
+            return;
+        }
+        wrap.replaceChildren();
+        wrap.textContent = 'Không thể xác định trạng thái ghế.';
+        message.textContent = error.message || 'Không tải được trạng thái ghế.';
+        message.className = 'form-message alert';
+        appendRetryButton(message, function() {
+            showRoomSeats(room, showtimeId);
+        });
+    }
+}
+
+function renderRoomSeatMap(total, sold) {
+    const wrap = document.getElementById('roomSeats');
+    wrap.replaceChildren();
+    const columns = Math.ceil(total / 5);
+    wrap.style.setProperty('--seat-columns', columns);
+    seatNamesForCapacity(total).forEach(function(seatName) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'seat';
+        button.disabled = true;
+        button.textContent = seatName;
+        if (sold.has(seatName)) {
+            button.classList.add('sold');
+            button.title = 'Đã đặt';
+            button.setAttribute('aria-label', seatName + ', đã đặt');
+        } else {
+            button.setAttribute('aria-label', seatName + ', chưa đặt');
+        }
+        wrap.appendChild(button);
+    });
+}
+
+
+function updateTotal() {
+
+    const summary = document.getElementById('seatSummary');
+    const totalBox = document.getElementById('total');
+    const select = document.getElementById('ticketShow');
+
+    if (!summary || !totalBox || !select) {
+        return;
+    }
+
+    summary.innerText =
+        selectedSeats.length > 0
+        ? selectedSeats.join(', ')
+        : 'Chưa chọn';
+
+    const show = showtimes.find(function(x) {
+        return String(x.id) === select.value;
+    });
+
+    const total =
+        show
+        ? Number(show.price) * selectedSeats.length
+        : 0;
+
+    totalBox.innerText =
+        total.toLocaleString('vi-VN') + ' ₫';
+}
+
+function setTicketMessage(text, success) {
+    const messageBox = document.getElementById('ticketMsg');
+    const message = document.createElement('div');
+    message.className = success ? 'success' : 'alert';
+    message.setAttribute('role', success ? 'status' : 'alert');
+    message.textContent = text;
+    messageBox.replaceChildren(message);
+}
+
+
+async function sellTicket() {
+
+    const select = document.getElementById('ticketShow');
+    const customerInput = document.getElementById('customerName');
+
+    const showtimeId = select.value;
+    const customerName = customerInput.value.trim();
+
+    if (!showtimeId) {
+        setTicketMessage('Vui lòng chọn suất chiếu.', false);
+        return;
+    }
+
+    if (!customerName) {
+        setTicketMessage('Vui lòng nhập tên khách hàng.', false);
+        return;
+    }
+
+    if (selectedSeats.length === 0) {
+        setTicketMessage('Vui lòng chọn ít nhất một ghế.', false);
+        return;
+    }
+
+    const button = document.getElementById('sellTicketButton');
+    const seatsBeingSold = selectedSeats.slice();
+    button.disabled = true;
+    try {
+        const data = await requestJson('/api/tickets', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                showtime_id: showtimeId,
+                customer_name: customerName,
+                seats: seatsBeingSold
+            })
+        });
+        if (!data.ok) {
+            throw new Error(data.message || data.error || 'Không thể thanh toán vé.');
+        }
+        setTicketMessage('Thanh toán thành công. Vé điện tử đã được tạo.', true);
+        selectedSeats = [];
+        await renderSeats();
+        updateTotal();
+    } catch (error) {
+        setTicketMessage(error.message || 'Không thể hoàn tất thanh toán.', false);
+        if (select.value) {
+            await renderSeats();
+        }
+    }
+}
+
+
+async function askAI() {
+    const input = document.getElementById('aiInput');
+    const sendButton = document.getElementById('aiSend');
+    if (!input || !sendButton || chatRequestCount > 0) {
+        return;
+    }
+    const message = input.value.trim();
+    if (!message) {
+        return;
+    }
+    addMsg(message, 'user');
+    input.value = '';
+    const loadingMessage = addMsg('Đang tra cứu dữ liệu…', 'ai loading');
+    chatRequestCount++;
+    sendButton.disabled = true;
+    try {
+        const result = await requestJson('/api/ai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        });
+        showAIResponse(result);
+    } catch (error) {
+        addMsg(error.message || 'Không thể gửi câu hỏi đến máy chủ.', 'ai error');
+    } finally {
+        loadingMessage?.remove();
+        chatRequestCount--;
+        sendButton.disabled = chatRequestCount > 0;
+    }
+}
+
+function showAIResponse(result) {
+    if (!result || typeof result.answer !== 'string' || !result.answer.trim()) {
+        throw new Error('AI trả về nội dung không hợp lệ.');
+    }
+    const message = document.createElement('div');
+    message.className = 'msg ai';
+    const answer = document.createElement('div');
+    answer.textContent = result.answer;
+    message.appendChild(answer);
+    const source = document.createElement('small');
+    source.className = 'ai-source';
+    const sourceLabels = {
+        gemini: 'Trả lời bởi Gemini, dựa trên dữ liệu Cinema',
+        database: 'Trả lời trực tiếp từ dữ liệu Cinema',
+        fallback: 'Phản hồi hướng dẫn; chưa tra cứu được dữ liệu cho câu hỏi này'
+    };
+    source.textContent = sourceLabels[result.source] || 'Nguồn trả lời chưa xác định';
+    message.appendChild(source);
+    if (result.notice) {
+        const notice = document.createElement('small');
+        notice.className = 'ai-notice';
+        notice.textContent = result.notice;
+        message.appendChild(notice);
+    }
+    document.getElementById('chatbox').appendChild(message);
+    message.scrollIntoView({ block: 'nearest' });
+}
+
+function askSuggestedQuestion(question) {
+    const input = document.getElementById('aiInput');
+    input.value = question;
+    askAI();
+}
+
+
+function addMsg(text, type) {
+
+    const chatbox = document.getElementById('chatbox');
+
+    if (!chatbox) {
+        return;
+    }
+
+    const message = document.createElement('div');
+
+    message.className = 'msg ' + type;
+    message.innerText = text;
+
+    chatbox.appendChild(message);
+    chatbox.scrollTop = chatbox.scrollHeight;
+    return message;
+}
+
+
+async function recommend() {
+
+    const loadingMessage = addMsg('Đang lấy danh sách phim…', 'ai loading');
+    try {
+        const result = await requestJson('/api/ai/recommend');
+        showAIResponse(result);
+    } catch (error) {
+        addMsg(error.message || 'Không thể lấy gợi ý phim.', 'ai error');
+    } finally {
+        loadingMessage?.remove();
+    }
+}
+
+
+async function reportAI() {
+
+    showPage('ai');
+
+    const loadingMessage = addMsg('Đang đọc báo cáo từ cơ sở dữ liệu…', 'ai loading');
+    try {
+        const result = await requestJson('/api/ai/report');
+        showAIResponse(result);
+    } catch (error) {
+        addMsg(error.message || 'Không thể đọc báo cáo.', 'ai error');
+    } finally {
+        loadingMessage?.remove();
+    }
+}
+
+
+document.getElementById('aiInput')?.addEventListener(
+    'keydown',
+    function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            askAI();
+        }
+    }
+);
+
+
+document.getElementById('ticketShow')?.addEventListener(
+    'change',
+    function() {
+
+        selectedSeats = [];
+        document.getElementById('ticketMsg').replaceChildren();
+
+        renderSeats();
+    }
+);
+
+document.getElementById('roomShow')?.addEventListener(
+    'change',
+    function(event) {
+        const room = rooms.find(function(item) {
+            return String(item.id) === event.currentTarget.dataset.roomId;
+        });
+        if (room) {
+            showRoomSeats(room, event.currentTarget.value);
+        }
+    }
+);
+
+document.getElementById('restoreForm')?.addEventListener(
+    'submit',
+    async function(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const message = document.getElementById('restoreMessage');
+        const file = document.getElementById('backupFile').files[0];
+        if (!file || !confirm('Khôi phục sẽ thay thế dữ liệu hiện tại. Tiếp tục?')) {
+            return;
+        }
+        message.textContent = '';
+        try {
+            const result = await requestJson('/api/admin/database/restore', {
+                method: 'POST',
+                body: new FormData(form)
+            });
+            if (!result.ok) {
+                throw new Error(result.error || 'Không thể khôi phục dữ liệu.');
+            }
+            message.textContent = result.message;
+            message.className = 'form-message success';
+        } catch (error) {
+            message.textContent = error.message || 'Không thể khôi phục dữ liệu.';
+            message.className = 'form-message alert';
+        }
+    }
+);
+
+
+window.addEventListener('load', function() {
+
+    const id =
+        location.hash.substring(1) || 'dashboard';
+
+    if (document.getElementById(id)) {
+        showPage(id);
+    } else {
+        showPage('dashboard');
+    }
+});
+
+
+const chartElement = document.getElementById('revenueChart');
+
+if (chartElement) {
+    try {
+        if (typeof Chart === 'undefined') {
+            throw new Error('Thư viện biểu đồ chưa tải được.');
+        }
+        new Chart(chartElement, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Doanh thu',
+                    data: chartValues
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        const message = document.createElement('p');
+        message.className = 'form-message alert';
+        message.setAttribute('role', 'alert');
+        message.textContent = 'Không thể hiển thị biểu đồ doanh thu: ' +
+            (error.message || 'lỗi không xác định.');
+        chartElement.replaceWith(message);
+    }
+}
+</script>
+
+</body>
+</html>

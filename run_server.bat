@@ -7,5 +7,5 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-.\.venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload
+.\.venv\Scripts\python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 pause
